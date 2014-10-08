@@ -1,0 +1,97 @@
+# Straight forward Makefile to compile all examples in a row
+
+INCDIR=-I./ViewManagement/common -I./include
+LIBS=-lGLESv2 -lEGL -lm -lz -lpng -lpthread
+BINDIR=bin
+APPNAME=MainApp
+IMAGESDIR=images
+PROJ_DIR=$(shell pwd)
+HOST_ARCH=$(shell uname -m)
+
+
+COMMONSRC=./ViewManagement/common/esShader.c    \
+          ./ViewManagement/common/esTransform.c \
+          ./ViewManagement/common/esShapes.c    \
+          ./ViewManagement/common/esUtil.c
+          
+COMMONHDR=./ViewManagement/common/esUtil.h  \
+		  ./ViewManagement/common/centic.h
+
+APPSOURCE= 
+           
+APPSOURCEC= ./ViewManagement/font/text2D.c
+
+
+
+ifeq ('$(ARCH)', 'arm')
+	CFLAGS = -DLINUX -DEGL_API_FB -DFREESCALE=1 -DDEBUG -D_DEBUG -D_GNU_SOURCE -DBUILDTARGET -mfloat-abi=softfp -mfpu=neon -fPIC -O3 -fno-strict-aliasing -fno-optimize-sibling-calls -Wall -g
+	LDFLAGS = -L$(ROOTFS)/usr/lib \
+			  -L${PROJ_DIR}/libUtility/target/lib
+			  
+	INCDIR += -I$(ROOTFS)/usr/include \
+	          -I${PROJ_DIR}/usr/local/include/freetype2
+	          			
+	LIBS+= -lGAL -lstdc++ -lfreetype
+	INSTALLDIR:= $(ROOTFS)/usr/sbin
+	INSTALL_IMAGES_DIR:= $(ROOTFS)/opt/centic
+	CC=$(CROSS_COMPILE)gcc
+	CXX=$(CROSS_COMPILE)g++
+	
+else ifeq ('$(HOST_ARCH)', 'x86_64')
+	CFLAGS = -DUSE_EGL_X11  -DDEBUG -D_DEBUG -D_GNU_SOURCE -fPIC -O3 -fno-strict-aliasing -fno-optimize-sibling-calls -Wall -g
+	LDFLAGS = -L/usr/lib \
+			  -L${PROJ_DIR}/libUtility/host64/lib \
+			  -L${PROJ_DIR}/libUtility/host64/lib64
+			  
+	INCDIR += -I/usr/include \
+	          -I${PROJ_DIR}/libUtility/host64/include/freetype2
+	          
+	          
+	INSTALLDIR:= /usr/sbin
+	IMAGESDIR:= /opt/centic
+
+	LIBS+= -lX11 -lstdc++ -lglib-2.0 -ltag -ltag_c -lSOIL -lfreetype
+	CC=gcc
+	CXX=g++
+else
+	CFLAGS = -DUSE_EGL_X11  -DDEBUG -D_DEBUG -D_GNU_SOURCE -fPIC -O3 -fno-strict-aliasing -fno-optimize-sibling-calls -Wall -g
+	LDFLAGS = -L/usr/lib \
+			  -L${PROJ_DIR}/libUtility/host/lib
+			  
+	INCDIR += -I/usr/include \
+			  -I${PROJ_DIR}/libUtility/host/include \
+			  -I${PROJ_DIR}/libUtility/host/include/glib-2.0 \
+	          -I${PROJ_DIR}/libUtility/host/lib/glib-2.0/include \
+	          -I${PROJ_DIR}/libUtility/host/include/taglib \
+	          -I${PROJ_DIR}/libUtility/host/include/freetype2
+	          	
+	INSTALLDIR:= /usr/sbin
+	IMAGESDIR:= /opt/centic
+
+	LIBS+= -lX11 -lstdc++ -lglib-2.0 -ltag -ltag_c -lSOIL -lfreetype
+	CC=gcc
+	CXX=g++	
+endif
+
+
+
+
+default: all
+all: $(BINDIR)/$(APPNAME)
+
+clean:
+	rm -rf $(BINDIR)/$(APPNAME)
+	rm -f *.o
+
+$(BINDIR)/$(APPNAME) : ${COMMONSRC} ${COMMONHDR} ${APPSOURCE}
+	@echo " [CC]  ${COMMONSRC} ${APPSOURCE}"
+	@$(CC) ${COMMONSRC} $(APPSOURCEC) ${APPSOURCE} -o $@ $(CFLAGS) ${INCDIR} $(LDFLAGS) ${LIBS}
+install: all
+	cp -f $(BINDIR)/$(APPNAME) $(INSTALLDIR)
+	mkdir -p $(INSTALL_IMAGES_DIR)
+	cp -rf $(IMAGESDIR) $(INSTALL_IMAGES_DIR)
+display:
+	@echo "LIBS = ${LIBS}" 
+
+
+	
