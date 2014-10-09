@@ -51,7 +51,7 @@ int Init ( ESContext *esContext )
       "}                         \n";
 
    // Load the shaders and get a linked program object
-   userData->programObject = esLoadProgram ( vShaderStr, fShaderStr );
+   userData->programObject = esLoadProgram ( (const char*)vShaderStr, (const char*)fShaderStr );
 
    // Get the attribute locations
    userData->positionLoc = glGetAttribLocation ( userData->programObject, "a_position" );

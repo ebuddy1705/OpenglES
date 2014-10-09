@@ -22,6 +22,14 @@
 //
 #include <GLES2/gl2.h>
 #include <EGL/egl.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <string.h>
+
+#define DBG(x...) {printf("\e[033;34m%s<%d> \e[0m",__FUNCTION__,__LINE__); printf(x);}
+#define FATAL(x...) {printf("\e[033;31m%s<%d> \e[0m",__FUNCTION__,__LINE__); printf(x);}
+
 
 #ifdef __cplusplus
 
@@ -59,9 +67,9 @@ extern "C" {
 #define TRUE 1
 #endif
 
-#ifndef PI
-#define PI 3.14159265358979323846264f
-#endif
+//#ifndef PI
+//#define PI 3.14159265358979323846264f
+//#endif
 
 typedef struct
 {
@@ -227,6 +235,7 @@ int esLoadBMP(char *filename, Image *image);
 
 void * esLoadPNG(char *name, int *outWidth, int *outHeight, char *outHasAlpha);
 
+GLuint LoadTexture( char *fileName );
 //
 /// \brief multiply matrix specified by result with a scaling matrix and return new matrix in result
 /// \param result Specifies the input matrix.  Scaled matrix is returned in result.

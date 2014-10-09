@@ -43,6 +43,7 @@ CH13SRC2=./Chapter_13/ParticleSystem/ParticleSystem.c
 CH16SRC1=./Chapter_16/triangles_fan/triangles_fan.c
 CH16SRC2=./Chapter_16/triangles_strip/triangles_strip.c
 CH16SRC3=./Chapter_16/yuv_render/yuv_render.c
+CH16SRC4=./Chapter_16/display_single_image/display_image.c
 
 
 default: all
@@ -58,7 +59,8 @@ all: ./Chapter_2/Hello_Triangle/CH02_HelloTriangle \
      ./Chapter_11/Stencil_Test/CH11_Stencil_Test \
      ./Chapter_13/ParticleSystem/CH13_ParticleSystem \
      ./Chapter_16/triangles_fan/CH16_triangles_fan \
-	 ./Chapter_16/triangles_strip/CH16_triangles_strip
+	 ./Chapter_16/triangles_strip/CH16_triangles_strip \
+	 ./Chapter_16/display_single_image/CH16_display_image
      
 clean:
 	find . -name "CH??_*" | xargs rm -f
@@ -89,7 +91,9 @@ clean:
 	gcc ${COMMONSRC} ${CH16SRC1} -o ./$@ ${INCDIR} $(CFLAGS) $(LDFLAGS)  ${LIBS}	
 ./Chapter_16/triangles_strip/CH16_triangles_strip: ${COMMONSRC} ${CH16SRC2}
 	gcc ${COMMONSRC} ${CH16SRC2} -o ./$@ $(CFLAGS) $(LDFLAGS) ${INCDIR} ${LIBS}
-	
+./Chapter_16/display_single_image/CH16_display_image: ${COMMONSRC} ${CH16SRC4}
+	gcc ${COMMONSRC} ${CH16SRC4} -o ./$@ $(CFLAGS) $(LDFLAGS) ${INCDIR} ${LIBS}
+		
 	
 	
 	

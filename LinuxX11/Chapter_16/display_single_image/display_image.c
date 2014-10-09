@@ -16,6 +16,7 @@
 
 #include <stdlib.h>
 #include "esUtil.h"
+//#include <SOIL.h>
 
 typedef struct
 {
@@ -42,29 +43,52 @@ typedef struct
 //
 GLuint LoadTexture ( char *fileName )
 {
-   int width,
-       height;
-   char *buffer = esLoadTGA ( fileName, &width, &height );
-   GLuint texId;
+    int width,
+    height;
+    char hasAlpha =0;
+    char *buffer;
+    Image *image1 = NULL;
 
-   if ( buffer == NULL )
-   {
-      esLogMessage ( "Error loading (%s) image.\n", fileName );
-      return 0;
-   }
+    if(strstr(fileName,"tga")!=NULL){
+        buffer=esLoadTGA ( fileName, &width, &height );
+    }else if(strstr(fileName,"bmp") !=NULL){
 
-   glGenTextures ( 1, &texId );
-   glBindTexture ( GL_TEXTURE_2D, texId );
 
-   glTexImage2D ( GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, buffer );
-   glTexParameteri ( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
-   glTexParameteri ( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
-   glTexParameteri ( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE );
-   glTexParameteri ( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE );
+        // allocate space for texture we will use
+        image1 = (Image *) malloc(sizeof(Image));
 
-   free ( buffer );
+        if(esLoadBMP ( fileName, image1 ) == 0)
+        {
+            return 0;
+        }
 
-   return texId;
+        width = image1->sizeX;
+        height = image1->sizeY;
+        buffer=image1->data;
+    }else if(strstr(fileName,"png") !=NULL){
+        buffer= esLoadPNG(fileName,&width, &height, &hasAlpha);
+    }
+
+    if ( buffer == NULL )
+    {
+        esLogMessage ( "Error loading (%s) image.\n", fileName );
+        return 0;
+    }
+
+    GLuint texId;
+    glGenTextures ( 1, &texId );
+    glBindTexture ( GL_TEXTURE_2D, texId );
+
+    glTexImage2D ( GL_TEXTURE_2D, 0, hasAlpha ? GL_RGBA : GL_RGB, width, height, 0,  hasAlpha ? GL_RGBA : GL_RGB , GL_UNSIGNED_BYTE, buffer );
+    glTexParameteri ( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
+    glTexParameteri ( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
+    glTexParameteri ( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE );
+    glTexParameteri ( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE );
+
+    free ( buffer );
+    if(image1) free(image1);
+
+    return texId;
 }
 
 #endif
@@ -112,8 +136,13 @@ int Init ( ESContext *esContext )
    userData->lightMapLoc = glGetUniformLocation ( userData->programObject, "s_lightMap" );
 
    // Load the textures
+#if 0
    userData->baseMapTexId = LoadTexture ( "basemap.tga" );
    userData->lightMapTexId = LoadTexture ( "lightmap.tga" );
+#else
+    userData->baseMapTexId = LoadTexture ( "./data/images/run_circle.png" );
+    //userData->lightMapTexId = LoadTexture ( "android.jpg" );
+#endif
 
    if ( userData->baseMapTexId == 0 || userData->lightMapTexId == 0 )
       return FALSE;
@@ -165,12 +194,15 @@ void Draw ( ESContext *esContext )
    // Set the base map sampler to texture unit to 0
    glUniform1i ( userData->baseMapLoc, 0 );
 
+#if 0
    // Bind the light map
    glActiveTexture ( GL_TEXTURE1 );
    glBindTexture ( GL_TEXTURE_2D, userData->lightMapTexId );
    
    // Set the light map sampler to texture unit 1
    glUniform1i ( userData->lightMapLoc, 1 );
+#endif
+
 
    glDrawElements ( GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, indices );
 
@@ -193,6 +225,7 @@ void ShutDown ( ESContext *esContext )
 }
 
 
+
 int main ( int argc, char *argv[] )
 {
    ESContext esContext;
@@ -201,7 +234,7 @@ int main ( int argc, char *argv[] )
    esInitContext ( &esContext );
    esContext.userData = &userData;
 
-   esCreateWindow ( &esContext, "MultiTexture", 320, 240, ES_WINDOW_RGB );
+   esCreateWindow ( &esContext, "MultiTexture", 1920, 1080, ES_WINDOW_RGB );
    
    if ( !Init ( &esContext ) )
       return 0;
@@ -212,5 +245,8 @@ int main ( int argc, char *argv[] )
 
    ShutDown ( &esContext );
 }
+
+
+
 
 

@@ -19,9 +19,40 @@
 #include <string.h>
 #include "esUtil.h"
 
-
+#include "Fan.h"
 
 #define DRAW_TRIANGLE_FAN 1
+
+
+
+
+#if 1
+GLfloat vVertexFan[]={
+    0.0f,0.0f, 0.0f,
+    -1.0f,-1.0f, 0.0f,
+    -1.0f,0.0f, 0.0f,
+    -1.0f,1.0f, 0.0f,
+    0.0f,1.0f, 0.0f,
+    1.0f,1.0f, 0.0f,
+    1.0f,0.0f, 0.0f,
+    1.0f,-1.0f, 0.0f,
+    0.0f,-1.0f, 0.0f,
+};
+
+
+GLfloat vTexCoordFan[]={
+        0.5f,0.5f,
+        0.0f,1.0f,
+        0.0f,0.5f,
+        0.0f,0.0f,
+        0.5f,0.0f,
+        1.0f,0.0f,
+        1.0f,0.5f,
+        1.0f,1.0f,
+        0.5f,1.0f,
+};
+#endif
+
 
 
 typedef struct
@@ -81,7 +112,63 @@ typedef struct
 GLfloat *vVertices = NULL;
 GLfloat *vTexCoord = NULL;
 GLushort *indices = NULL;
+
+int numberlines = 360;
+int startlines = 270;
 GLsizei count = 0;
+#define CYCLE_PATH "./data/images/run_circle.png"
+//#define CYCLE_PATH "./data/images/Meter_02_1-new.png"
+
+
+// Copy vertices and normals to the memory of the GPU
+void PrintFan2file(char *obj)
+{
+    unsigned int i = 0;
+    char tmpout[128];
+    sprintf(tmpout, "%s.h", obj);
+    DBG("outfile: %s\n", tmpout);
+
+
+    FILE *pFile=NULL;
+    pFile = fopen(tmpout, "w");
+    if(!pFile) return;
+
+
+    fflush(pFile);
+    fprintf(pFile, "unsigned int %sNumLines = %d; \n\n", obj, numberlines);
+    fprintf(pFile, "unsigned int %sStartLines = %d; \n\n", obj, startlines);
+
+
+    fprintf(pFile, "float %sVerts [] = { \n", obj);
+    for(i = 0; i < numberlines +1; i++){
+
+        fprintf(pFile, "%f, %f, %f, \n", vVertices[(i)*3], vVertices[((i)*3)+1], vVertices[((i)*3)+2]);
+    }
+    fprintf(pFile, "};\n\n");
+
+
+
+
+    fprintf(pFile, "float %sTexCoords [] = { \n", obj);
+    for(i = 0; i < numberlines +1 ; i++){
+
+        fprintf(pFile, "%f, %f, \n", vTexCoord[(i)*2], vTexCoord[((i)*2)+1]);
+
+    }
+    fprintf(pFile, "};\n\n");
+
+
+    fflush(pFile);
+    fclose (pFile);
+    return;
+
+}
+
+
+
+
+
+
 
 
 /*
@@ -93,6 +180,7 @@ GLsizei count = 0;
  *       direc = -1 =>
  *
  * */
+
 void loadVertex(int lines, int startlines, int direc, float radius_x, float radius_y, float center_x, float center_y)
 {
 
@@ -100,36 +188,127 @@ void loadVertex(int lines, int startlines, int direc, float radius_x, float radi
 
     vVertices = (float*)malloc(sizeof(float)*(lines+1)*3);
     vTexCoord = (float*)malloc(sizeof(float)*(lines+1)*2);
-    indices   = (GLushort*)malloc(sizeof(GLushort)*(lines+2));
+    //indices   = (GLushort*)malloc(sizeof(GLushort)*(lines+2));
 
-    vVertices[0*3]     = center_x; //set 1st to center
-    vVertices[(0*3)+1] = center_y;
-    vVertices[(0*3)+2] = .0f;
+    vVertices[0*3]     = 0.0f; //set 1st to center
+    vVertices[(0*3)+1] = 0.0f;
+    vVertices[(0*3)+2] = 0.0f;
 
-    vTexCoord[0] = .5f;
-    vTexCoord[1] = .5f;
+    vTexCoord[0] = 0.5f;
+    vTexCoord[1] = 0.5f;
 
-    indices[0] = 0;
+    //indices[0] = 0;
 
-    float r = 0.5;
-    float offset = 0.5;
 
+#if 0 //fan cycle
     for (i = 0; i < lines;i++)
     {
 
-        vVertices[(i+1)*3]     = (float)(radius_x * cos(2*PI*(startlines-i)/lines) + center_x);
-        vVertices[((i+1)*3)+1] = (float) (radius_y * sin(2*PI*direc*(startlines-i)/lines) + center_y);
+        vVertices[(i+1)*3]     = (radius_x * cos(2*M_PI*(float)(startlines-i)/(float)lines) + center_x);
+        vVertices[((i+1)*3)+1] = (float) (radius_y * sin(2*M_PI*direc*(float)(startlines-i)/(float)lines) + center_y);
         vVertices[((i+1)*3)+2] = 0.0f;//z
-        vTexCoord[(i+1)*2] =(float) (r*cos(2*PI*direc*(i-startlines)/lines) + offset);
-        vTexCoord[((i+1)*2)+1] = (float) (r*sin(2*PI*direc*(i-startlines)/lines) + offset);
+        vTexCoord[(i+1)*2] =(float) (0.5*cos(2*M_PI*direc*(float)(i-startlines)/(float)lines) + 0.5);
+        vTexCoord[((i+1)*2)+1] = (float) (0.5*sin(2*M_PI*direc*(float)(i-startlines)/(float)lines) + 0.5);
 
-        indices[(i+1)] = (GLushort)i;
+        DBG(" %f %f %f \n", vVertices[(i+1)*3], vVertices[((i+1)*3)+1], vVertices[((i+1)*3)+2]);
+        DBG(" %f %f  \n", vTexCoord[(i+1)*2], vTexCoord[((i+1)*2)+1]);
+
+
+        //indices[(i+1)] = (GLushort)i;
+    }
+#else  //fan square
+    for (i = 0; i < lines;i++)
+    {
+
+        if((startlines-i) == 270){
+            vVertices[(i+1)*3]     = 0;
+            vVertices[((i+1)*3)+1] = -1;
+            vVertices[((i+1)*3)+2] = 0.0f;//z
+
+            vTexCoord[(i+1)*2] =  0.5;
+            vTexCoord[((i+1)*2)+1] =  1;
+
+            DBG("startlines-i == 270 - i = %d \n", i);
+        }else if((225<= (startlines-i)) && ((startlines-i) <270)){
+            vVertices[(i+1)*3]     = -1/tan(2*M_PI*(startlines-i)/(float)lines);
+            vVertices[((i+1)*3)+1] = -1;
+            vVertices[((i+1)*3)+2] = 0.0f;//z
+
+            vTexCoord[(i+1)*2] = -0.5/tan(2*M_PI*(startlines-i)/(float)lines)+0.5;
+            vTexCoord[((i+1)*2)+1] =  1;
+
+            DBG("225<=startlines-i<270 - i = %d \n", i);
+        }else if((135<= (startlines-i)) && ((startlines-i) <225)){
+            vVertices[(i+1)*3]     = -1;
+            vVertices[((i+1)*3)+1] = -tan(2*M_PI*(startlines-i)/(float)lines);
+            vVertices[((i+1)*3)+2] = 0.0f;//z
+
+            vTexCoord[(i+1)*2] = 0;
+            vTexCoord[((i+1)*2)+1] =  0.5*tan(2*M_PI*(startlines-i)/(float)lines) + 0.5;
+
+            DBG("135<=startlines-i<225 - i = %d \n", i);
+        }else if((90< (startlines-i)) && ((startlines-i)<135)){
+            vVertices[(i+1)*3]     = 1/tan(2*M_PI*(startlines-i)/(float)lines);
+            vVertices[((i+1)*3)+1] = 1;
+            vVertices[((i+1)*3)+2] = 0.0f;//z
+
+            vTexCoord[(i+1)*2] = 0.5/tan(2*M_PI*(startlines-i)/(float)lines) + 0.5;
+            vTexCoord[((i+1)*2)+1] =  0;
+
+            DBG("90<startlines-i<135 - i = %d \n", i);
+        }else if((startlines-i) == 90){
+            vVertices[(i+1)*3]     = 0;
+            vVertices[((i+1)*3)+1] = 1;
+            vVertices[((i+1)*3)+2] = 0.0f;//z
+
+            vTexCoord[(i+1)*2] =  0.5;
+            vTexCoord[((i+1)*2)+1] =  0;
+
+            DBG("(startlines-i) == 90 - i = %d \n", i);
+        }else if((45<=(startlines-i)) && ((startlines-i) <90)){
+            vVertices[(i+1)*3]     = 1/tan(2*M_PI*(startlines-i)/(float)lines);
+            vVertices[((i+1)*3)+1] = 1;
+            vVertices[((i+1)*3)+2] = 0.0f;//z
+
+            vTexCoord[(i+1)*2] = 0.5/tan(2*M_PI*(startlines-i)/(float)lines) + 0.5;
+            vTexCoord[((i+1)*2)+1] =  0;
+
+            DBG("45<=startlines-i<90 - i = %d \n", i);
+        }else if((-45<=(startlines-i)) && ((startlines-i) <45)){
+            vVertices[(i+1)*3]     = 1;
+            vVertices[((i+1)*3)+1] = tan(2*M_PI*(startlines-i)/(float)lines);
+            vVertices[((i+1)*3)+2] = 0.0f;//z
+
+            vTexCoord[(i+1)*2] = 1;
+            vTexCoord[((i+1)*2)+1] =  -0.5*tan(2*M_PI*(startlines-i)/(float)lines)+0.5;
+
+            DBG("-45<=startlines-i<45 - i = %d \n", i);
+        }else if((-90<(startlines-i)) && ((startlines-i)<-45)){
+            vVertices[(i+1)*3]     = -1/tan(2*M_PI*(startlines-i)/(float)lines);
+            vVertices[((i+1)*3)+1] = -1;
+            vVertices[((i+1)*3)+2] = 0.0f;//z
+
+            vTexCoord[(i+1)*2] = -0.5/tan(2*M_PI*(startlines-i)/(float)lines) + 0.5;
+            vTexCoord[((i+1)*2)+1] =  1;
+
+            DBG("-90<startlines-i<-45 - i = %d \n", i);
+        }
     }
 
-    indices[lines+1] = indices[1]; //closing part is same as for i=0
+#endif
+
+    //indices[lines+1] = indices[1]; //closing part is same as for i=0
+
+
+    PrintFan2file("Fan");
 }
 
 
+
+
+
+
+#if 0
 ///
 // Load texture from disk
 //
@@ -179,7 +358,7 @@ GLuint LoadTexture ( char *fileName )
     free ( buffer );
     return texId;
 }
-
+#endif
 
 ///
 // Initialize the shader and program object
@@ -216,7 +395,7 @@ int Init ( ESContext *esContext )
       "}                                                    \n";
 
    // Load the shaders and get a linked program object
-   userData->programObject = esLoadProgram ( vShaderStr, fShaderStr );
+   userData->programObject = esLoadProgram ( (const char*)vShaderStr, (const char*)fShaderStr );
 
    // Get the attribute locations
    userData->positionLoc = glGetAttribLocation ( userData->programObject, "a_position" );
@@ -229,7 +408,7 @@ int Init ( ESContext *esContext )
    userData->mvpLoc = glGetUniformLocation( userData->programObject, "u_mvpMatrix" );
 
    // Load the textures
-   userData->baseMapTexId = LoadTexture ( "./data/images/Meter_02_1-new.png" );
+   userData->baseMapTexId = LoadTexture ( CYCLE_PATH );
 
     /*
    loadVertex(int lines, int startlines, int direc
@@ -237,7 +416,8 @@ int Init ( ESContext *esContext )
                float center_x, float center_y)
    */
    //count = 90;
-   loadVertex(360, -45, 1, 1, 1, 0, 0);
+   loadVertex(numberlines, startlines, 1, 1, 1, 0, 0);
+
 
 
    if ( userData->baseMapTexId == 0 /*|| userData->lightMapTexId == 0*/ )
@@ -254,6 +434,10 @@ int Init ( ESContext *esContext )
 void Key ( ESContext *esContext, unsigned char key, int x, int y)
 {
    printf( "Saw an 'm'\n" );
+
+   count +=1;
+   if(count > numberlines) count=0;
+
     switch ( key )
    {
    case 'm':
@@ -293,14 +477,14 @@ void Update ( ESContext *esContext, float deltaTime )
 
    //usleep(5000);
    count +=1;
-   if(count > 360)count=0;
+   if(count > numberlines)count=0;
 
    // Compute the window aspect ratio
    aspect = (GLfloat) esContext->width / (GLfloat) esContext->height;
 
    // Generate a perspective matrix with a 60 degree FOV
    esMatrixLoadIdentity( &perspective );
-   esPerspective( &perspective, 60.0f, aspect, 1.0f, 20.0f );
+   esPerspective( &perspective, 60.0f, 1, 1.0f, 20.0f );
 
    // Generate a model view matrix to rotate/translate the cube
    esMatrixLoadIdentity( &modelview );
@@ -327,6 +511,7 @@ void Draw ( ESContext *esContext )
       
    // Set the viewport
    glViewport ( 0, 0, esContext->width, esContext->height );
+   //glViewport ( 0, 0, 340, 303 );
    
    // Clear the color buffer
    glClear ( GL_COLOR_BUFFER_BIT );
@@ -335,9 +520,9 @@ void Draw ( ESContext *esContext )
    glUseProgram ( userData->programObject );
 
    // Load the vertex position
-   glVertexAttribPointer ( userData->positionLoc, 3, GL_FLOAT, GL_FALSE, /*5 * sizeof(GLfloat)*/ 0, vVertices );
+   glVertexAttribPointer ( userData->positionLoc, 3, GL_FLOAT, GL_FALSE, /*5 * sizeof(GLfloat)*/ 0, FanVerts );
    // Load the texture coordinate
-   glVertexAttribPointer ( userData->texCoordLoc, 2, GL_FLOAT, GL_FALSE, /*5 * sizeof(GLfloat)*/ 0, vTexCoord );
+   glVertexAttribPointer ( userData->texCoordLoc, 2, GL_FLOAT, GL_FALSE, /*5 * sizeof(GLfloat)*/ 0, FanTexCoords );
 
    glEnableVertexAttribArray ( userData->positionLoc );
    glEnableVertexAttribArray ( userData->texCoordLoc );
@@ -358,6 +543,7 @@ void Draw ( ESContext *esContext )
 #if DRAW_TRIANGLE_FAN
 
    glDrawArrays(GL_TRIANGLE_FAN, 0, count);
+   //DBG(" count = %d \n", count)
 
 #else
 
@@ -392,7 +578,7 @@ int main ( int argc, char *argv[] )
    esInitContext ( &esContext );
    esContext.userData = &userData;
 
-   esCreateWindow ( &esContext, "MultiTexture", 600, 600, ES_WINDOW_RGB );
+   esCreateWindow ( &esContext, "MultiTexture", 600, 600, ES_WINDOW_ALPHA );
    
    if ( !Init ( &esContext ) )
       return 0;

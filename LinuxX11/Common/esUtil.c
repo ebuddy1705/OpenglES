@@ -118,8 +118,8 @@ EGLBoolean WinCreate(ESContext *esContext, const char *title)
     Atom wm_state;
     XWMHints hints;
     XEvent xev;
-    EGLConfig ecfg;
-    EGLint num_config;
+    //EGLConfig ecfg;
+    //EGLint num_config;
     Window win;
 
     /*
@@ -175,6 +175,33 @@ EGLBoolean WinCreate(ESContext *esContext, const char *title)
 }
 
 
+#include <unistd.h>
+#include <termios.h>
+
+char getchx() {
+        char buf = 0;
+        struct termios old = {0};
+        if (tcgetattr(0, &old) < 0)
+                perror("tcsetattr()");
+        old.c_lflag &= ~ICANON;
+        old.c_lflag &= ~ECHO;
+#if !(defined FREESCALE)
+        old.c_cc[VMIN] = 1;
+#else
+	old.c_cc[VMIN] = 0;
+#endif
+        old.c_cc[VTIME] = 0;
+        if (tcsetattr(0, TCSANOW, &old) < 0)
+                perror("tcsetattr ICANON");
+         if (read(0, &buf, 1) < 0) ;
+//                 perror ("read()");
+        old.c_lflag |= ICANON;
+        old.c_lflag |= ECHO;
+        if (tcsetattr(0, TCSADRAIN, &old) < 0)
+                perror ("tcsetattr ~ICANON");
+        return (buf);
+}
+
 ///
 //  userInterrupt()
 //
@@ -183,9 +210,10 @@ EGLBoolean WinCreate(ESContext *esContext, const char *title)
 //
 GLboolean userInterrupt(ESContext *esContext)
 {
+#if (defined USE_EGL_X11)
     XEvent xev;
     KeySym key;
-    GLboolean userinterrupt = GL_FALSE;
+    volatile GLboolean userinterrupt = GL_FALSE;
     char text;
 
     // Pump all messages from X server. Keypresses are directed to keyfunc (if defined)
@@ -199,11 +227,22 @@ GLboolean userInterrupt(ESContext *esContext)
                 if (esContext->keyFunc != NULL)
                     esContext->keyFunc(esContext, text, 0, 0);
             }
+            if(text=='q') userinterrupt = GL_TRUE;
         }
         if ( xev.type == DestroyNotify )
             userinterrupt = GL_TRUE;
     }
     return userinterrupt;
+#else
+    char text;
+    GLboolean userinterrupt = GL_FALSE;
+    text=getchx();
+    if (text !=0 && esContext->keyFunc != NULL)
+      esContext->keyFunc(esContext, text, 0, 0);
+
+    if(text=='q') userinterrupt = GL_TRUE;
+    return userinterrupt;
+#endif
 }
 
 
@@ -654,4 +693,61 @@ void * esLoadPNG(char *name, int *outWidth, int *outHeight, char *outHasAlpha)
     /* That's it */
     return outData;
 }
+
+
+
+///
+// Load texture from disk
+//
+GLuint LoadTexture ( char *fileName )
+{
+    int width,
+    height;
+    char hasAlpha =0;
+    char *buffer = NULL;
+    Image *image1 = NULL;
+
+    if(strstr(fileName,"tga")!=NULL){
+        buffer=esLoadTGA ( fileName, &width, &height );
+    }else if(strstr(fileName,"bmp") !=NULL){
+
+
+        // allocate space for texture we will use
+        image1 = (Image *) malloc(sizeof(Image));
+
+        if(esLoadBMP ( fileName, image1 ) == 0)
+        {
+            return 0;
+        }
+
+        width = image1->sizeX;
+        height = image1->sizeY;
+        buffer=image1->data;
+    }else if(strstr(fileName,"png") !=NULL){
+        buffer= esLoadPNG(fileName,&width, &height, &hasAlpha);
+    }
+
+    if ( buffer == NULL )
+    {
+        esLogMessage ( "Error loading (%s) image.\n", fileName );
+        return 0;
+    }
+
+    GLuint texId;
+    glGenTextures ( 1, &texId );
+    glBindTexture ( GL_TEXTURE_2D, texId );
+
+    DBG(" hasAlpha = %d \n", hasAlpha)
+    glTexImage2D ( GL_TEXTURE_2D, 0, hasAlpha ? GL_RGBA : GL_RGB, width, height, 0,  hasAlpha ? GL_RGBA : GL_RGB , GL_UNSIGNED_BYTE, buffer );
+    glTexParameteri ( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
+    glTexParameteri ( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
+    glTexParameteri ( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE );
+    glTexParameteri ( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE );
+
+    free ( buffer );
+    if(image1) free(image1);
+
+    return texId;
+}
+
 

@@ -16,11 +16,10 @@
 
 #include <stdlib.h>
 #include <math.h>
+#include <string.h>
 #include "esUtil.h"
 
 
-
-#define DRAW_TRIANGLE_FAN 1
 
 
 typedef struct
@@ -47,109 +46,27 @@ typedef struct
     GLint  mvpLoc;
     // MVP matrix
     ESMatrix  mvpMatrix;
+
+
 } UserData;
 
 
 
-#if 0
 
-    GLfloat vVertices[] = { /* Top Left Of The Quad (Front) */
-                            -1.0f,1.0f, 0.0f,
-                            /* Bottom Left Of The Quad (Front) */
-                            -1.0f,-1.0f, 0.0f,
-                            /* Bottom Right Of The Quad (Front) */
-                            1.0f,-1.0f, 0.0f,
-                            /* Top Right Of The Quad (Front) */
-                            1.0f,1.0f, 0.0f,
-                          };
-
-    GLfloat vTexCoord[]={
-            0.0f,  0.0f,        // TexCoord 0
-            0.0f,  1.0f,        // TexCoord 1
-
-            1.0f,  1.0f,        // TexCoord 2
-            1.0f,  0.0f,        // TexCoord 3
-    };
-
-    GLushort indices[] = { 0, 1, 2, 0, 2, 3 };
-
-#endif
-
-GLfloat *vvVertices = NULL;
-GLfloat *vvTexCoord = NULL;
-GLushort *vvIndices = NULL;
-GLint numberstep = 100;
-GLsizei count = 0;
-#define PROGRESS_BAR  "./data/images/fuel_green.png"  
-//#define PROGRESS_BAR  "./data/images/run_circle.png"
-
-/*
- *
- *
- * */
-//progress bar
-void loadVertex(int nstep, int startstep, GLfloat **vVertices, GLfloat **vTexCoord, GLushort **indices)
-{
-
-
-    int lines = 2*nstep+1;
-
-    (*vVertices) = (float*)malloc(sizeof(float)*(lines+1)*3);
-    (*vTexCoord) = (float*)malloc(sizeof(float)*(lines+1)*2);
-    (*indices)   = (GLushort*)malloc(sizeof(GLushort)*(lines+2));
-
-    float deltastepVertex = (2/(float)nstep) ;
-    float deltastepTexCoord = (1/(float)nstep) ;
+char *imgBuffer = NULL;
 
 
 
-    int i = 0;
-    (*vVertices)[0*3]     = -1.0f; //set 1st to center
-    (*vVertices)[(0*3)+1] = 1.0f;
-    (*vVertices)[(0*3)+2] = 0.0f;
 
-    (*vTexCoord)[0] = 0.0f;
-    (*vTexCoord)[1] = 0.0f;
-
-    (*indices)[0] = 0;
-
-    for (i = 0; i < lines;i++)
-    {
-        if((i-1)%2 == 0){
-            (*vVertices)[(i+1)*3]     = (*vVertices)[(i)*3] + deltastepVertex;
-            (*vTexCoord)[(i+1)*2]     = (*vTexCoord)[(i)*2] + deltastepTexCoord;
-        }else{
-            (*vVertices)[(i+1)*3]     = (*vVertices)[(i)*3];
-            (*vTexCoord)[(i+1)*2]     = (*vTexCoord)[(i)*2];
-        }
-
-        if(i%2 == 0){
-            (*vVertices)[((i+1)*3)+1] = -1;
-            (*vTexCoord)[((i+1)*2)+1] = 1;
-        }else{
-            (*vVertices)[((i+1)*3)+1] = 1;
-            (*vTexCoord)[((i+1)*2)+1] = 0;
-        }
-
-
-        (*vVertices)[((i+1)*3)+2] = 0.0f;//z
-
-        (*indices)[(i+1)] = (GLushort)i;
-    }
-
-    (*indices)[lines+1] = (*indices)[1]; //closing part is same as for i=0
-}
-
-#if 0
 ///
 // Load texture from disk
 //
-GLuint LoadTexture ( char *fileName )
+GLuint LoadTextureSub ( char *fileName , char *buffer)
 {
     int width,
     height;
     char hasAlpha =0;
-    char *buffer;
+    //char *buffer;
 
     if(strstr(fileName,"tga")!=NULL){
         buffer=esLoadTGA ( fileName, &width, &height );
@@ -181,16 +98,16 @@ GLuint LoadTexture ( char *fileName )
     glGenTextures ( 1, &texId );
     glBindTexture ( GL_TEXTURE_2D, texId );
 
-    glTexImage2D ( GL_TEXTURE_2D, 0, hasAlpha ? GL_RGBA : GL_RGB, width, height, 0,  hasAlpha ? GL_RGBA : GL_RGB , GL_UNSIGNED_BYTE, buffer );
+    glTexImage2D ( GL_TEXTURE_2D, 0, hasAlpha ? GL_RGBA : GL_RGB, width, height, 0,  hasAlpha ? GL_RGBA : GL_RGB , GL_UNSIGNED_BYTE, NULL );
     glTexParameteri ( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
     glTexParameteri ( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
     glTexParameteri ( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE );
     glTexParameteri ( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE );
 
-    free ( buffer );
+    //free ( buffer );
     return texId;
 }
-#endif
+
 
 ///
 // Initialize the shader and program object
@@ -240,17 +157,7 @@ int Init ( ESContext *esContext )
    userData->mvpLoc = glGetUniformLocation( userData->programObject, "u_mvpMatrix" );
 
    // Load the textures
-   userData->baseMapTexId = LoadTexture (PROGRESS_BAR);
-
-
-
-   /*
-   void loadVertex(int nstep, int startstep,
-                    GLfloat *vVertices, GLfloat *vTexCoord,
-                    GLushort *indices)
-    */
-
-   loadVertex(numberstep, 0, &vvVertices, &vvTexCoord, &vvIndices);
+   userData->baseMapTexId = LoadTexture ( "./data/images/run_circle.png" );
 
 
    if ( userData->baseMapTexId == 0 /*|| userData->lightMapTexId == 0*/ )
@@ -266,24 +173,23 @@ int Init ( ESContext *esContext )
 //
 void Key ( ESContext *esContext, unsigned char key, int x, int y)
 {
-   //DBG( "Saw an 'm'\n" );
+   printf( "Saw an 'm'\n" );
+
+
     switch ( key )
    {
+   case 'm':
+      printf( "Saw an 'm'\n" );
+      break;
+
+   case 'a':
+      printf( "Saw an 'a'\n" );
+      break;
+
    case '1':
-      DBG( "count-- = %d \n", count );
-         
-      if(count > 0)
-		count -= 1;
-	  
+      printf( "Saw a '1'\n" );
       break;
 
-   case '2':
-      DBG( "count++ = %d \n", count );
-      if(count < numberstep)
-		count += 1;
-      break;
-
-   
    case 033: // ASCII Escape Key
        ShutDown( esContext );
        exit( 0 );
@@ -301,20 +207,22 @@ void Update ( ESContext *esContext, float deltaTime )
    ESMatrix perspective;
    ESMatrix modelview;
    float    aspect;
-     
 
    // Compute a rotation angle based on time to rotate the cube
    userData->angle += ( deltaTime * 40.0f );
    if( userData->angle >= 360.0f )
       userData->angle -= 360.0f;
- 
+
+   //usleep(5000);
+   count +=1;
+   if(count > numberlines)count=0;
 
    // Compute the window aspect ratio
    aspect = (GLfloat) esContext->width / (GLfloat) esContext->height;
 
    // Generate a perspective matrix with a 60 degree FOV
    esMatrixLoadIdentity( &perspective );
-   esPerspective( &perspective, 60.0f, aspect, 1.0f, 20.0f );
+   esPerspective( &perspective, 60.0f, 1, 1.0f, 20.0f );
 
    // Generate a model view matrix to rotate/translate the cube
    esMatrixLoadIdentity( &modelview );
@@ -323,7 +231,7 @@ void Update ( ESContext *esContext, float deltaTime )
    esTranslate( &modelview, 0.0, 0.0, -2.0 );
 
    // Rotate the cube
-   //esRotate( &modelview, userData->angle, 1.0, 0.0, .0 );
+   //esRotate( &modelview, 180, 1.0, .0, .0 );
 
    // Compute the final MVP by multiplying the
    // modevleiw and perspective matrices together
@@ -350,9 +258,9 @@ void Draw ( ESContext *esContext )
    glUseProgram ( userData->programObject );
 
    // Load the vertex position
-   glVertexAttribPointer ( userData->positionLoc, 3, GL_FLOAT, GL_FALSE, /*5 * sizeof(GLfloat)*/ 0, vvVertices );
+   glVertexAttribPointer ( userData->positionLoc, 3, GL_FLOAT, GL_FALSE,  0, vVertexStrip );
    // Load the texture coordinate
-   glVertexAttribPointer ( userData->texCoordLoc, 2, GL_FLOAT, GL_FALSE, /*5 * sizeof(GLfloat)*/ 0, vvTexCoord );
+   glVertexAttribPointer ( userData->texCoordLoc, 2, GL_FLOAT, GL_FALSE,  0, vVertexCoordStrip );
 
    glEnableVertexAttribArray ( userData->positionLoc );
    glEnableVertexAttribArray ( userData->texCoordLoc );
@@ -372,11 +280,12 @@ void Draw ( ESContext *esContext )
 
 #if DRAW_TRIANGLE_FAN
 
-   glDrawArrays(GL_TRIANGLE_STRIP, 0, count*2+2);
+   glDrawArrays(GL_TRIANGLE_FAN, 0, count);
+   //DBG(" count = %d \n", count)
 
 #else
 
-   glDrawElements ( GL_TRIANGLES, 90, GL_UNSIGNED_SHORT, vvIndices );
+   glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
 #endif
 
@@ -407,7 +316,7 @@ int main ( int argc, char *argv[] )
    esInitContext ( &esContext );
    esContext.userData = &userData;
 
-   esCreateWindow ( &esContext, "MultiTexture", 600, 600, ES_WINDOW_RGB );
+   esCreateWindow ( &esContext, "MultiTexture", 600, 600, ES_WINDOW_ALPHA );
    
    if ( !Init ( &esContext ) )
       return 0;

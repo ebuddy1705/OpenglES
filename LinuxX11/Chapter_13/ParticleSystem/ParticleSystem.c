@@ -47,6 +47,8 @@ typedef struct
 
 } UserData;
 
+
+#if 0
 ///
 // Load texture from disk
 //
@@ -76,7 +78,7 @@ GLuint LoadTexture ( char *fileName )
 
    return texId;
 }
-
+#endif
 
 ///
 // Initialize the shader and program object
@@ -123,7 +125,7 @@ int Init ( ESContext *esContext )
       "}                                                    \n";
 
    // Load the shaders and get a linked program object
-   userData->programObject = esLoadProgram ( vShaderStr, fShaderStr );
+   userData->programObject = esLoadProgram ( (const char*)vShaderStr, (const char*)fShaderStr );
 
    // Get the attribute locations
    userData->lifetimeLoc = glGetAttribLocation ( userData->programObject, "a_lifetime" );
